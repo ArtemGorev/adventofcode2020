@@ -1,12 +1,15 @@
-const rawInput: string = await Deno.readTextFile('./input.txt');
-const lines: string[] = rawInput.trim().split('\n').map(x => x.trim()).filter(s => s.length > 0);
+async function read(path: string) {
+  const rawInput: string = await Deno.readTextFile(path);
+  const lines: string[] = rawInput.trim().split('\n').map(x => x.trim()).filter(s => s.length > 0);
 
-const timestamp = parseInt(lines[0]);
-const buses = lines[1].split(',')
-  .filter(x => x !== 'x')
-  .map(x => parseInt(x));
-console.log({ timestamp, buses });
+  const timestamp = parseInt(lines[0]);
+  const buses = lines[1].split(',')
+    .filter(x => x !== 'x')
+    .map(x => parseInt(x));
+  return { lines, timestamp, buses };
+}
 
+const { lines, timestamp, buses } = await read('./test1.txt');
 
 const part1 = () => {
   let i = timestamp + 1;
@@ -20,54 +23,52 @@ const part1 = () => {
     }
   }
 };
+part1();
 
-// part1();
 
-
-const checkTimestamp = (timestamp: number, buses: { offset: number; id: number }[]) => {
+type Bus = { offset: number; id: number };
+const checkTimestamp = (timestamp: number, buses: Bus[]) => {
   return buses.map(bus => (timestamp + bus.offset) % bus.id === 0)
     .reduce((acc, val) => acc && val, true);
 };
 
-const gcd: (a: number, b: number) => number =
-  (a: number, b: number) => !b ? a : gcd(b, a % b);
+const modularMultiplicativeInverse = (a: bigint, modulus: bigint) => {
+  const b = BigInt(a % modulus);
 
-const lcm = (a: number, b: number) => (a / gcd(a, b) * b);
+  for (let hipothesis = 1n; hipothesis <= modulus; hipothesis++) {
+    if ((b * hipothesis) % modulus == 1n) return hipothesis;
+  }
+
+  return 1n;
+};
+
+const solveCRT = (remainders: bigint[], modules: bigint[]) => {
+  const prod: bigint = modules.reduce((acc: bigint, val) => acc * val, 1n);
+
+  return modules.reduce((sum, mod, index) => {
+    const p = prod / mod;
+    return sum + (remainders[index] * modularMultiplicativeInverse(p, mod) * p);
+  }, 0n) % prod;
+};
 
 
-function part2() {
+async function part2(path: string) {
+  const { lines } = await read(path);
+
   const buses = lines[1]
     .split(',')
     .map((id, offset) => ({ id, offset }))
     .filter(x => x.id !== 'x')
     .map(elem => ({ id: parseInt(elem.id), offset: elem.offset }));
 
-  // console.log(buses);
+  const remainders = buses.map(bus => (bus.id - bus.offset) % bus.id).map(BigInt);
+  const modules = buses.map(bus => bus.id).map(BigInt);
 
-
-  // const numbers = [...new Set(buses.map(x => x.id += x.offset))];
-  // console.log(numbers);
-
-  // const number = buses.map(x => x.id).reduce((acc, val) => lcm(acc, val));
-  // console.log({ number });
-  // const check = checkTimestamp(number, buses);
-  // console.log({ check });
-
-  const di = Math.max(...buses.map(i => i.id));
-  const doffset = buses.find(x => x.id === di)!.offset;
-
-  console.log({ di, doffset });
-  let i = 0;
-  while (true) {
-    const results = checkTimestamp(i - doffset, buses);
-    if (results) {
-      console.log({ value: i - doffset });
-      break;
-    } else {
-      i += di;
-    }
-  }
+  return solveCRT(remainders, modules);
 }
 
-
-part2();
+console.assert(await part2('./test1.txt') === 1202161486n);
+console.assert((await part2('./test2.txt')) === 3417n);
+console.log((await part2('./input.txt')));
+console.log((await part2('./inputA.txt')));
+console.log('OK');
