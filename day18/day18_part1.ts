@@ -1,4 +1,9 @@
-function parseTokens(input: string) {
+type Token = {
+  t: 'operand' | 'operation' | 'group' | 'open_bracket' | 'close_bracket'
+  op?: '+' | '*' | number | any[];
+}
+
+function parseTokens(input: string): Token[] {
   const raw = input
     .replaceAll('(', ' ( ')
     .replaceAll(')', ' ) ')
@@ -7,24 +12,16 @@ function parseTokens(input: string) {
     .filter(x => x);
 
   return raw.map(x => {
-    if (x === '+' || x === '*') {
-      return {
-        t: 'operation',
-        op: x
-      };
-    } else if (x === '(') {
-      return {
-        t: 'open_bracket'
-      };
-    } else if (x === ')') {
-      return {
-        t: 'close_bracket'
-      };
-    } else {
-      return {
-        t: 'operand',
-        op: +x
-      };
+    switch (x) {
+      case '+':
+      case '*':
+        return { t: 'operation', op: x };
+      case '(':
+        return { t: 'open_bracket' };
+      case ')':
+        return { t: 'close_bracket' };
+      default:
+        return { t: 'operand', op: +x };
     }
   });
 }
@@ -34,11 +31,6 @@ const calcOperation = (op: '+' | '*', arg1: number, arg2: number) => {
   if (op === '*') return arg1 * arg2;
 };
 
-
-type Token = {
-  t: 'operand' | 'operation' | 'group' | 'open_bracket' | 'close_bracket'
-  op: '+' | '*' | number | any[] | undefined;
-}
 
 function group(tokens: any[]): [number, any] {
   const token = {
@@ -115,10 +107,8 @@ function calculateTokens(tokens: any) {
 const calc = (input: string): number => {
   const tokens = parseTokens(input);
   const [_, root] = group(tokens);
-
   return calculateTokens(root.op);
 };
-
 
 console.assert(calc('1 + 2 * 3 + 4 * 5 + 6') === 71);
 console.assert(calc('1 + (2 * 3) + (4 * (5 + 6))') === 51);
@@ -129,8 +119,11 @@ console.assert(calc('((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2') === 13632
 
 const rawFile = await Deno.readTextFile('./inputA.txt');
 
-const sum = rawFile.split('\n').filter(x => x)
+const sum = rawFile
+  .split('\n')
+  .filter(x => x)
   .map(line => calc(line))
   .reduce((acc, val) => acc + val);
 
 console.log({sum});
+
